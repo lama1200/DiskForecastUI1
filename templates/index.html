@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- الخطوة 1: رفع الإكسل + اسم السيرفر -->
+<section class="card">
+  <h2>الخطوة ١: رفع البيانات واسم السيرفر</h2>
+
+  <form action="{{ url_for('prepare') }}" method="post" enctype="multipart/form-data">
+    <label>ملف الإكسل:</label>
+    <input type="file" name="excel_file" required>
+
+    <label>اسم السيرفر:</label>
+    <input type="text" name="server_name" placeholder="مثال: RB1-DB-10" value="{{ server_name or '' }}" required>
+
+    <!-- زران تحت اسم السيرفر -->
+    <div style="display:flex; gap:12px; margin-top:16px; flex-wrap:wrap;">
+      <!-- يجهز للسيرفر الواحد -->
+      <button type="submit" class="btn-primary">سيرفر واحد</button>
+
+      <!-- ينقل لصفحة الوضع المتعدد لرفع الإكسل -->
+      <button type="button" class="btn-secondary"
+              onclick="window.location.href='{{ url_for('multi_page') }}'">
+        أكثر من سيرفر
+      </button>
+    </div>
+  </form>
+
+  {% if already_trained %}
+  <!-- 🔹 يظهر هذا القسم فقط إذا السيرفر مدرب مسبقًا -->
+  <div class="custom-alert success" style="margin-top:16px; line-height:1.8;">
+     تم تدريب هذا السيرفر مسبقاً.<br>
+    لديك خياران:
+    <ul style="margin:6px 20px; text-align:right;">
+      <li><strong>استعراض النتائج الحالية</strong> </li>
+      <li><strong>إعادة التدريب</strong> — يُفضل اختيار هذا الخيار إذا تم تحديث بيانات استخدام السيرفر أو إضافة قراءات جديدة في ملف الإكسل.</li>
+    </ul>
+  </div>
+
+  <div style="display:flex; gap:12px; margin-top:10px; flex-wrap:wrap;">
+    <!-- زر استعراض النتائج الحالية -->
+    <form action="{{ url_for('view') }}" method="post">
+      <input type="hidden" name="server_name" value="{{ server_name }}">
+      <button type="submit" class="btn-primary"> استعراض النتائج الحالية</button>
+    </form>
+
+    <!-- زر إعادة التدريب -->
+    <form action="{{ url_for('run') }}" method="post">
+      <input type="hidden" name="server_name" value="{{ server_name }}">
+      <button type="submit" class="btn-secondary"> إعادة التدريب</button>
+    </form>
+  </div>
+  {% endif %}
+</section>
+
+
+<!-- الخطوة 2: تشغيل التنبؤ -->
+<section class="card">
+  <h2>الخطوة ٢: تشغيل التدريب</h2>
+
+  <!-- إدخال اسم السيرفر -->
+  <input type="text" name="server_name" placeholder="اسم السيرفر" value="{{ server_name or '' }}" required>
+
+  <!-- زر تشغيل التدريب -->
+  <form action="{{ url_for('run') }}" method="post" style="margin-top: 12px;">
+    <input type="hidden" name="server_name" value="{{ server_name or '' }}">
+    <button type="submit" class="btn-primary">تشغيل التدريب</button>
+  </form>
+</section>
+
+
+<!-- خيار سريع: استعراض النتائج الحالية -->
+<section class="card">
+  <h2>استعراض النتائج</h2>
+  <form action="{{ url_for('view') }}" method="post">
+    <input type="text" name="server_name" placeholder="اسم السيرفر" value="{{ server_name or '' }}" required>
+
+    <!-- اختيار مدة التنبؤ -->
+    <div style="margin:12px 0;">
+      <label><input type="radio" name="months" value="3" required> ٣ أشهر</label>
+      <label><input type="radio" name="months" value="6"> ٦ أشهر</label>
+      <label><input type="radio" name="months" value="8"> ٨ أشهر</label>
+      <label><input type="radio" name="months" value="12"> ١٢ شهر</label>
+    </div>
+
+    <button type="submit" id="btn-view">ابدأ التنبؤ</button>
+  </form>
+</section>
+
+{% endblock %}

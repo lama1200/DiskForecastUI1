@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="card">
+  <h3 style="text-align:center; margin-bottom:20px;">
+    توقعات سعة البيانات  ({{ months }} أشهر قادمة)
+  </h3>
+
+  <div class="table-chart-row">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>التاريخ</th>
+            <th>الحجم (MB)</th>
+            <th>الحجم (GB)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in table %}
+            <tr>
+              <td>{{ r['التاريخ'] }}</td>
+              <td>{{ '%.2f'|format(r['الحجم (MB)']) }}</td>
+              <td>{{ '%.2f'|format(r['الحجم (GB)']) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="lineChartSingle"></canvas>
+    </div>
+  </div>
+
+  {% if files %}
+    <h4>تحميل الملفات</h4>
+    <ul>
+      {% for f in files %}
+        <li><a href="{{ url_for('download', work=work_rel, fname=f) }}">{{ f }}</a></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const ctx = document.getElementById('lineChartSingle').getContext('2d');
+
+  const labelsHistory = {{ chart_labels_history|tojson }};
+  const valuesHistory = {{ chart_values_history|tojson }};
+  const labelsForecast = {{ chart_labels|tojson }};
+  const valuesForecast = {{ chart_values|tojson }};
+
+  const allLabels = [...labelsHistory, ...labelsForecast];
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: allLabels,
+      datasets: [
+        {
+          label: 'النمو السابق (بيانات فعلية)',
+          data: [...valuesHistory, ...Array(valuesForecast.length).fill(null)],
+          borderColor: 'gray',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: false
+        },
+        {
+          label: 'النمو المتوقع (من النموذج)',
+          data: [...Array(valuesHistory.length).fill(null), ...valuesForecast],
+          borderColor: 'rgb(75, 192, 192)',
+          borderWidth: 3,
+          tension: 0.3,
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2) ?? ''} GB`
+          }
+        }
+      },
+      scales: {
+        y: { 
+          beginAtZero: true,
+          grace: '10%',   // ← أضفنا فراغ 10% فوق
+          title: { display: true, text: "الحجم (GB)" },
+          ticks: {
+            stepSize: 50,
+            padding: 10
+          }
+        },
+        x: { 
+          grid: { display: false },
+          title: { display: true, text: "التاريخ" }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

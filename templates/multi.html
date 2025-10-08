@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="card">
+  <h2>رفع ملف الإكسل</h2>
+  <form action="{{ url_for('list_servers') }}" method="post" enctype="multipart/form-data">
+    <input type="file" name="excel_file_multi" required>
+    <button type="submit">استخراج السيرفرات</button>
+  </form>
+</section>
+
+{% if server_list %}
+<section class="card">
+  <form action="{{ url_for('forecast_multi') }}" method="post" style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap;">
+
+    
+    <!-- اختيار السيرفرات -->
+<div style="flex:1; min-width:280px;">
+  <label for="servers">اختر السيرفرات:</label>
+  <select id="servers" name="servers" multiple>
+    {% for s in server_list %}
+      <option value="{{ s }}">{{ s }}</option>
+    {% endfor %}
+  </select>
+
+  <!-- زر تحديد الكل -->
+  <button type="button" id="select-all-btn" style="margin-top:8px;">تحديد الكل</button>
+</div>
+
+
+    
+   <!-- اختيار مدة التنبؤ -->
+<div style="flex:1; min-width:200px;">
+  <label for="months">مدة التنبؤ:</label>
+  <div style="display:flex; flex-direction:column; gap:6px; padding:0;">
+    <label style="display:flex; align-items:center; gap:6px; font-weight:500; color:#333;">
+      <input type="radio" name="months" value="3" required> ٣ أشهر
+    </label>
+    <label style="display:flex; align-items:center; gap:6px; font-weight:500; color:#333;">
+      <input type="radio" name="months" value="6"> ٦ أشهر
+    </label>
+    <label style="display:flex; align-items:center; gap:6px; font-weight:500; color:#333;">
+      <input type="radio" name="months" value="8"> ٨ أشهر
+    </label>
+    <label style="display:flex; align-items:center; gap:6px; font-weight:500; color:#333;">
+      <input type="radio" name="months" value="12"> ١٢ شهر
+    </label>
+  </div>
+</div>
+
+    <!-- زر التشغيل -->
+    <div style="flex:0 0 auto; align-self:center;">
+      <button type="submit">تشغيل وتحليل</button>
+    </div>
+
+  </form>
+</section>
+{% endif %}
+
+
+{% if multi_table %}
+<section class="card">
+  <h3>تجميع النتائج ({{ months }} أشهر قادمة)</h3>
+
+  <!-- الجدول -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>اسم السيرفر</th>
+          {% for col in labels_forecast_only %}
+            <th>{{ col }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in multi_table %}
+          <tr>
+            <td>{{ r['اسم السيرفر'] }}</td>
+            {% for col in labels_forecast_only %}
+              <td>{{ r[col] if r[col] is not none else '' }}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- الشارتات -->
+  <div id="charts-container" class="charts-grid"></div>
+</section>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const serversSelect = document.getElementById("servers");
+    const choices = new Choices(serversSelect, {
+      removeItemButton: true,
+      searchEnabled: true,
+      placeholderValue: "ابحث واختر السيرفرات...",
+      noResultsText: "لا يوجد نتائج",
+      duplicateItemsAllowed: false  // 🔥 يمنع التكرار
+    });
+
+    // زر تحديد الكل
+    document.getElementById("select-all-btn").addEventListener("click", function() {
+      const allValues = Array.from(serversSelect.options).map(o => o.value);
+      choices.removeActiveItems();  // 🔥 يمسح الاختيارات القديمة
+      choices.setChoiceByValue(allValues); // 🔥 يحدد الكل دفعة واحدة
+    });
+  });
+
+  /* شِفرة الرسوم (تبقى كما هي) */
+  {% if chart_labels_multi and chart_datasets_multi %}
+  const container = document.getElementById('charts-container');
+  container.innerHTML = '';
+  const servers = [...new Set({{ chart_datasets_multi | tojson }}.map(d => d.label.split(' ')[0]))];
+
+  if (servers.length === 1) {
+    const wrapper = document.createElement('div');
+    wrapper.style.textAlign = "center";
+    wrapper.style.gridColumn = "1 / -1";
+    container.appendChild(wrapper);
+
+    const title = document.createElement('h3');
+    title.innerText = servers[0];
+    title.style.margin = "15px 0";
+    title.style.fontSize = "18px";
+    title.style.fontWeight = "600";
+    wrapper.appendChild(title);
+
+    const canvas = document.createElement('canvas');
+    canvas.style.maxWidth = "600px";
+    canvas.style.margin = "0 auto";
+    wrapper.appendChild(canvas);
+
+    new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: {{ chart_labels_multi | tojson }},
+        datasets: {{ chart_datasets_multi | tojson }}
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'top' } },
+        scales: {
+          y: { beginAtZero: true, grace: '10%', title: { display: true, text: 'الحجم (GB)' } },
+          x: { title: { display: true, text: 'التاريخ (شهر/سنة)' } }
+        }
+      }
+    });
+  } else {
+    servers.forEach(srv => {
+      const wrapper = document.createElement('div');
+      wrapper.style.textAlign = "center";
+
+      const title = document.createElement('h4');
+      title.innerText = srv;
+      title.style.margin = "10px 0";
+      title.style.fontSize = "16px";
+      title.style.fontWeight = "600";
+      wrapper.appendChild(title);
+
+      const canvas = document.createElement('canvas');
+      canvas.style.maxWidth = "350px";
+      canvas.style.maxHeight = "200px";
+      wrapper.appendChild(canvas);
+
+      container.appendChild(wrapper);
+
+      const ds = {{ chart_datasets_multi | tojson }}.filter(d => d.label.startsWith(srv));
+
+      new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: {{ chart_labels_multi | tojson }},
+          datasets: ds
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grace: '10%' },
+            x: { title: { display: true, text: 'التاريخ' } }
+          }
+        }
+      });
+    });
+  }
+  {% endif %}
+</script>
+{% endblock %}
+
