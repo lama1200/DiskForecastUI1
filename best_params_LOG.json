@@ -1,0 +1,8 @@
+{
+  "n_changepoints": 10,
+  "trend_reg": 1.0,
+  "learning_rate": 0.005,
+  "optimizer": "AdamW",
+  "yearly": false,
+  "batch_size": 8
+}

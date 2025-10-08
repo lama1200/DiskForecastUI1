@@ -1,0 +1,22 @@
+# --- Web Framework ---
+Flask==3.0.3
+Werkzeug==3.0.3
+
+# --- Data Handling ---
+pandas==2.2.2
+numpy==1.26.4
+openpyxl==3.1.2
+python-dateutil==2.9.0
+
+# --- Machine Learning & Forecasting ---
+neuralprophet==0.9.2
+torch==2.3.0
+scikit-learn==1.5.1
+
+# --- Visualization ---
+matplotlib==3.9.0
+plotly==5.22.0
+
+# --- Utilities (for safety & file operations) ---
+tqdm==4.66.4
+PyYAML==6.0.1
